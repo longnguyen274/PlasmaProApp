@@ -1,14 +1,16 @@
 {
   "expo": {
-    "name": "PlasmaProApp",
-    "slug": "PlasmaProApp",
+    "name": "Plasma Pro",
+    "slug": "plasma-pro-iomt",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "plasmaproapp",
-    "userInterfaceStyle": "automatic",
+    "scheme": "plasmapro",
+    "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "vn.edu.hust.plasmapro",
+      "supportsTablet": false
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +19,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "vn.edu.hust.plasmapro"
     },
     "web": {
       "output": "static",
@@ -28,9 +31,32 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#1E5EDB",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
+        }
+      ],
+      "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Plasma Pro cần truy cập ảnh để tải ảnh vết thương vào hồ sơ.",
+          "cameraPermission": "Plasma Pro cần dùng camera để chụp ảnh vết thương.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Plasma Pro cần camera để bác sĩ chụp ảnh vết thương có hướng dẫn.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": false
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Plasma Pro dùng cảm biến chuyển động để nhắc giữ máy yên trước khi tự chụp ảnh vết thương."
         }
       ]
     ],

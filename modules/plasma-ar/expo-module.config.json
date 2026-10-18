@@ -1,0 +1,5 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": { "modules": ["PlasmaARModule"] },
+  "android": { "modules": ["expo.modules.plasmaar.PlasmaARModule"] }
+}

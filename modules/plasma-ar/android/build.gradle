@@ -1,0 +1,19 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'vn.edu.hust.plasmapro'
+version = '0.2.0'
+
+android {
+  namespace "expo.modules.plasmaar"
+  defaultConfig {
+    versionCode 2
+    versionName "0.2.0"
+  }
+}
+
+dependencies {
+  implementation "com.google.ar:core:1.56.0"
+}

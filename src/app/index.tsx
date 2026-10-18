@@ -1,98 +1,56 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Redirect, router } from 'expo-router';
+import { useState } from 'react';
+import { ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Consent } from '@/components/Consent';
+import { Text } from '@/components/Text';
+import { Button, Card, Chip, Field, Muted, Choices } from '@/components/ui';
+import { DEMO_PASSWORD, isSampleAccount } from '@/lib/auth';
+import { useStore } from '@/lib/store';
+import { C, cardShape, G } from '@/theme';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
+const HOME = { doctor: '/doctor', patient: '/patient', admin: '/admin' } as const;
+export default function Login() {
+  const { me, data, authenticate } = useStore();
+  const insets = useSafeAreaInsets();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [agreed, setAgreed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  if (me) return <Redirect href={HOME[me.role]} />;
+  const submit = async () => {
+    setBusy(true); setError('');
+    try { await authenticate(username, password, agreed); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Không thể đăng nhập.'); }
+    finally { setBusy(false); }
+  };
+  return <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 24, paddingTop: insets.top + 24, paddingBottom: 48, gap: 20, width: '100%', maxWidth: 540, alignSelf: 'center' }}>
+    <LinearGradient colors={G.night} style={[cardShape(68), { padding: 28, gap: 12, overflow: 'hidden' }]}>
+      <View style={{ position: 'absolute', right: -25, top: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: '#ffffff15' }} />
+      <Ionicons name="pulse" size={40} color="#fff" />
+      <Text style={{ color: '#fff', fontSize: 32, fontWeight: '700' }}>Plasma Pro</Text>
+      <Text style={{ color: '#e4e8ff', fontSize: 16, lineHeight: 24 }}>Kết nối chăm sóc. Theo dõi mỗi ngày.</Text>
+      <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}><Chip label="Bệnh nhân" tone="teal" /><Chip label="Bác sĩ" /><Chip label="Kỹ thuật" tone="violet" /></View>
+    </LinearGradient>
+    <View style={{ gap: 5 }}><Text style={{ fontSize: 25, fontWeight: '700' }}>Chào mừng trở lại</Text><Muted>Đăng nhập để tiếp tục theo dõi và chăm sóc.</Muted></View>
+    <Card style={{ gap: 16 }}>
+      <Field label="Tên đăng nhập" accessibilityLabel="Tên đăng nhập" value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false} placeholder="Nhập tên đăng nhập" />
+      <Field label="Mật khẩu" accessibilityLabel="Mật khẩu" value={password} onChangeText={setPassword} secureTextEntry placeholder="Nhập mật khẩu" />
+      <Consent agreed={agreed} onChange={setAgreed} />
+      {error ? <Text accessibilityRole="alert" style={{ color: C.red }}>{error}</Text> : null}
+      <Button label="Đăng nhập" icon="log-in-outline" loading={busy} disabled={!username.trim() || !password || !agreed} onPress={submit} />
+      <Button label="Có mã kích hoạt từ bác sĩ? Kích hoạt tài khoản" variant="ghost" onPress={() => router.push('/activate')} />
+      <Button label="Chưa có tài khoản? Đăng ký" variant="ghost" onPress={() => router.push('/register')} />
+    </Card>
+    <Card>
+      <Text style={{ fontWeight: '700' }}>Trải nghiệm bản demo</Text>
+      <Muted>Chọn tài khoản để điền nhanh. Mật khẩu thử nghiệm: {DEMO_PASSWORD}</Muted>
+      <Choices value={username} onChange={value => { setUsername(value); setPassword(DEMO_PASSWORD); setError(''); }} options={data.accounts.filter(a => isSampleAccount(a) && !a.locked).map(a => ({ value: a.username, label: a.name }))} />
+      <Muted>Đăng nhập cục bộ trên máy này; chưa xác thực qua máy chủ.</Muted>
+    </Card>
+  </ScrollView>;
 }
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
-});

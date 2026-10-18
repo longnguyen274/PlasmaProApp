@@ -1,0 +1,24 @@
+import { useLocalSearchParams } from 'expo-router';
+
+import { DeviceView } from '@/components/DeviceView';
+import { NoAccess } from '@/components/Guard';
+import { Header, Screen } from '@/components/ui';
+import { useLookups, useStore } from '@/lib/store';
+
+// BS07 – Lịch sử thiết bị: phiên sử dụng, thời gian, thông số thiết bị cung cấp.
+export default function DeviceScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { me } = useStore();
+  const { device, patient } = useLookups();
+  const d = device(id);
+  const owner = patient(d?.patientId);
+  const allowed =
+    !!d && !!me &&
+    (me.role === 'admin' || (me.role === 'doctor' && owner?.doctorId === me.id) || (me.role === 'patient' && me.patientId === owner?.id));
+  if (!d || !allowed) return <NoAccess />;
+  return (
+    <Screen header={<Header back title="Thiết bị và nhật ký" subtitle={d.code} />}>
+      <DeviceView device={d} canControl={me!.role === 'doctor'} />
+    </Screen>
+  );
+}

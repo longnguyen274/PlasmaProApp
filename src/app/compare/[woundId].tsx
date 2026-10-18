@@ -1,0 +1,56 @@
+import { useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
+import { View } from 'react-native';
+import { Text } from '@/components/Text';
+
+import { NoAccess, useCanView } from '@/components/Guard';
+import { Card, Choices, Header, Muted, Screen, WoundPhoto } from '@/components/ui';
+import { fmtDate } from '@/lib/format';
+import { formatAreaDisplay } from '@/lib/naming';
+import { useLookups } from '@/lib/store';
+import { C } from '@/theme';
+
+// So sánh ảnh trước và sau của cùng một vết thương (đặc tả mục 8).
+export default function Compare() {
+  const { woundId } = useLocalSearchParams<{ woundId: string }>();
+  const { wound, patient, imagesOf } = useLookups();
+  const w = wound(woundId);
+  const p = patient(w?.patientId);
+  const canView = useCanView(p);
+  const images = w ? imagesOf(w.id) : [];
+  const [a, setA] = useState(images[0]?.id ?? '');
+  const [b, setB] = useState(images[images.length - 1]?.id ?? '');
+  if (!w || !p || !canView || images.length === 0) return <NoAccess />;
+
+  const A = images.find((i) => i.id === a) ?? images[0];
+  const B = images.find((i) => i.id === b) ?? images[images.length - 1];
+  const opts = images.map((i) => ({ value: i.id, label: `${i.id} · ${i.capture?.sourceDateKnown === false ? 'Chưa rõ ngày' : fmtDate(i.captureDate).slice(0, 5)}` }));
+  const diff = A.areaCm2 !== null && B.areaCm2 !== null ? B.areaCm2 - A.areaCm2 : null;
+
+  return (
+    <Screen header={<Header back title="So sánh trước / sau" subtitle={`${p.code} · ${w.code} · ${w.location}`} />}>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        {[A, B].map((im, i) => (
+          <View key={i} style={{ flex: 1, gap: 6 }}>
+            <Text style={{ fontWeight: '700', color: C.text }}>{i === 0 ? 'Trước' : 'Sau'}</Text>
+            <WoundPhoto image={im} style={{ width: '100%', aspectRatio: 3 / 4, borderRadius: 14 }} />
+            <Text style={{ color: C.text, fontWeight: '600' }}>{im.capture?.sourceDateKnown === false ? 'Ngày chụp chưa xác định' : fmtDate(im.captureDate)}</Text>
+            <Muted>{formatAreaDisplay(im.areaCm2)}</Muted>
+          </View>
+        ))}
+      </View>
+      <Card>
+        <Text style={{ fontWeight: '700', color: C.text }}>
+          {diff === null ? 'Chưa đủ số đo để so sánh diện tích.' : `Chênh lệch: ${diff > 0 ? '+' : ''}${formatAreaDisplay(Math.round(diff * 1000) / 1000)}`}
+        </Text>
+        <Muted>Số đo do bác sĩ nhập; nếu phương pháp đo thay đổi giữa hai lần, cần lưu ý khi so sánh.</Muted>
+      </Card>
+      <Card>
+        <Text style={{ fontWeight: '600', color: C.text }}>Ảnh trước</Text>
+        <Choices value={A.id} onChange={setA} options={opts} />
+        <Text style={{ fontWeight: '600', color: C.text }}>Ảnh sau</Text>
+        <Choices value={B.id} onChange={setB} options={opts} />
+      </Card>
+    </Screen>
+  );
+}

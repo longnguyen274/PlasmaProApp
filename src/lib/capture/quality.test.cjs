@@ -1,0 +1,35 @@
+/* global __dirname */
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const ts = require('typescript');
+const mod = { exports: {} };
+new Function('module','exports',ts.transpileModule(fs.readFileSync(path.join(__dirname,'quality.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(mod,mod.exports);
+const { evaluatePixels, measurementAllowed, validRoi } = mod.exports;
+const roi={x:.25,y:.25,width:.5,height:.5};
+const pixels=new Uint8Array(40*40*4).fill(255);
+for(let y=10;y<30;y++)for(let x=10;x<30;x++)for(let c=0;c<3;c++)pixels[(y*40+x)*4+c]=0;
+const dark=evaluatePixels(pixels,40,40,roi);
+assert.equal(dark.metrics.meanLuma,0,'Bright background must not mask a dark ROI');
+assert.equal(dark.lighting,'warn');
+assert.equal(dark.profileValidated,false);
+assert.equal(dark.movement,'unknown');
+assert.equal(dark.reflection,'unknown');
+assert.equal(validRoi({...roi,x:NaN}),false);
+assert.equal(validRoi({...roi,width:2}),false);
+assert.equal(evaluatePixels(pixels,40,40,{...roi,width:2}).metrics,null);
+assert.equal(evaluatePixels(new Uint8Array(0),40,40,roi).metrics,null);
+const white=evaluatePixels(new Uint8Array(40*40*4).fill(255),40,40,roi);
+assert.equal(white.lighting,'warn');
+for(let i=0;i<pixels.length;i+=4){pixels[i]=100;pixels[i+1]=100;pixels[i+2]=100;}
+const neutral=evaluatePixels(pixels,40,40,roi);
+assert.equal(neutral.lighting,'unknown','Unvalidated heuristic must never declare pass');
+assert.equal(neutral.sharpness,'warn');
+const e={featureEnabled:true,validatedProfile:true,qualityAccepted:true,maskReviewed:true,trackingValid:true,geometryMatchesRoi:true,metricScaleAvailable:true,alignmentValid:true,geometryAcceptable:true,scopeSupported:true,source:'live_ar_camera',sessionId:'s1',imageFrameId:'f1',geometryFrameId:'f1'};
+assert.equal(measurementAllowed(e),true);
+for(const key of Object.keys(e).filter(k=>typeof e[k]==='boolean')) assert.equal(measurementAllowed({...e,[key]:false}),false,key);
+assert.equal(measurementAllowed({...e,source:'gallery'}),false);
+assert.equal(measurementAllowed({...e,geometryFrameId:'stale-frame'}),false);
+assert.equal(measurementAllowed({...e,sessionId:null}),false);
+assert.equal(measurementAllowed({...e,imageFrameId:null,geometryFrameId:null}),false);
+console.log('PASS ROI quality, unknown states, measurement prerequisites and stale-frame rejection');

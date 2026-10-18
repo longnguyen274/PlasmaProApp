@@ -1,0 +1,51 @@
+import { useState } from 'react';
+import { View } from 'react-native';
+import { NoAccess } from '@/components/Guard';
+import { Text } from '@/components/Text';
+import { Button, Card, Chip, Choices, Empty, Header, InfoRow, Muted, Screen, SectionTitle, WoundPhoto } from '@/components/ui';
+import { researchImages } from '@/lib/access';
+import { notify } from '@/lib/dialog';
+import { exportDataset } from '@/lib/export';
+import { formatAreaDisplay } from '@/lib/naming';
+import { researchFilename, researchPhoto } from '@/lib/research';
+import { useStore } from '@/lib/store';
+
+export default function TechnicalDataset() {
+  const { me, data } = useStore();
+  const [subject, setSubject] = useState('all');
+  const [busy, setBusy] = useState(false);
+  if (!me || me.role !== 'admin') return <NoAccess />;
+  const eligible = researchImages(data, me);
+  const subjects = [...new Set(eligible.map(im => data.patients.find(p => p.id === im.patientId)!.researchCode!))];
+  const shown = eligible.filter(im => subject === 'all' || data.patients.find(p => p.id === im.patientId)?.researchCode === subject);
+  return <Screen header={<Header title="Kho dữ liệu kỹ thuật" subtitle="Ảnh và diện tích do bác sĩ cung cấp" />}>
+    <Card hero>
+      <Chip label={me.researchAccess ? 'Đã cấp quyền nghiên cứu' : 'Chưa có quyền nghiên cứu'} tone={me.researchAccess ? 'green' : 'amber'} />
+      <Text style={{ fontSize: 28, fontWeight: '700' }}>{eligible.length} ảnh sẵn sàng</Text>
+      <Muted>Chỉ gồm ảnh được bác sĩ kiểm tra và bệnh nhân đồng ý nghiên cứu. Dùng mã nghiên cứu; không hiển thị họ tên, số điện thoại, năm sinh hay hồ sơ lâm sàng.</Muted>
+      <Muted>Bản ảnh nghiên cứu đã bỏ metadata. Nội dung ảnh được bác sĩ kiểm tra trước khi chia sẻ.</Muted>
+    </Card>
+    <Choices value={subject} onChange={setSubject} options={[{ value: 'all', label: 'Tất cả' }, ...subjects.map(value => ({ value, label: value }))]} />
+    <SectionTitle>Bộ ảnh đã gán diện tích</SectionTitle>
+    {shown.length === 0 && <Empty text={me.researchAccess ? 'Chưa có ảnh đủ điều kiện. Bác sĩ cần nhập diện tích và xác nhận chia sẻ.' : 'Quản trị cần cấp quyền nghiên cứu cho tài khoản này.'} />}
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>
+      {shown.map(im => <Card key={im.id} style={{ width: '100%', maxWidth: 360 }}>
+        <WoundPhoto image={researchPhoto(im)} style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 12 }} />
+        <InfoRow label="Mã nghiên cứu" value={data.patients.find(p => p.id === im.patientId)!.researchCode!} />
+        <InfoRow label="Diện tích" value={formatAreaDisplay(im.areaCm2)} />
+        <Text selectable style={{ fontSize: 12 }}>{researchFilename(data, im)}</Text>
+      </Card>)}
+    </View>
+    <Card>
+      <Text style={{ fontWeight: '700' }}>Tải dữ liệu theo bộ lọc</Text>
+      <Muted>ZIP gồm {shown.length} ảnh PNG và labels.csv. Ảnh cùng một người được giữ trong cùng tập train/validation/test.</Muted>
+      <Button label={'Tải bộ dữ liệu (' + shown.length + ' ảnh)'} icon="download-outline" disabled={!shown.length || !me.researchAccess} loading={busy} onPress={async () => {
+        setBusy(true);
+        try { const result = await exportDataset(data, shown, me.id); notify('Đã xuất dữ liệu', result.count + ' ảnh · ' + result.location); }
+        catch(e) { notify('Chưa xuất được dữ liệu', String(e)); }
+        finally { setBusy(false); }
+      }} />
+    </Card>
+  </Screen>;
+}
+
